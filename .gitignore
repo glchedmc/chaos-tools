@@ -1,0 +1,14 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Fabric Loom run directory (dev environment saves, logs, downloaded assets)
+run/
+
+# macOS
+.DS_Store
