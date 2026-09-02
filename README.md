@@ -55,9 +55,10 @@ lodestone-linked compass uses. That's a nice shortcut: we get needle-
 pointing rendering entirely for free instead of writing any custom
 rendering code. It's a snapshot, not a live track - the needle points at
 where the danger *was* when you checked, so it drifts if you or the mob
-move afterward. The twist: checking gives the found mob a temporary Speed
-boost, scaled by enchant level - so getting the information makes the
-situation a little worse, on purpose.
+move afterward. The twist: checking wakes up every hostile mob within a
+radius (scaling with enchant level - base 8 blocks + 4 per level) and
+sends them all after you, so getting the information makes things worse
+on purpose.
 
 ## Java/architecture concepts covered so far
 
@@ -85,6 +86,13 @@ situation a little worse, on purpose.
   of building custom needle rendering. Worth internalizing as a general
   principle: before writing something custom, check whether the game
   already has a mechanic that does 90% of what you want.
+- **Git merge conflicts**: happen when two histories change the same
+  file in different ways with no shared ancestor to reconcile them from
+  (this repo hit it from GitHub auto-creating a README/LICENSE that
+  collided with the local ones). Conflict markers (`<<<<<<<`, `=======`,
+  `>>>>>>>`) show both versions inline in the file - resolving means
+  editing the file down to what it should actually say, then `git add`
+  the resolved file and commit.
 
 ## Building
 
@@ -99,7 +107,8 @@ situation a little worse, on purpose.
 
 Confirmed against real docs or real testing: enchantment JSON shape,
 dynamic registry lookup pattern, `LootContextParams.DIRECT_ATTACKING_ENTITY`
-(confirmed real name after two wrong guesses - see git history/chat log).
+(confirmed real name after two wrong guesses), `InteractionResult` (replaced
+`InteractionResultHolder`, confirmed from real 1.21.2 migration docs).
 
 Still-unverified pieces:
 
@@ -114,11 +123,10 @@ Still-unverified pieces:
 - `LootContextParams.THIS_ENTITY` - not yet hit a compile error on this
   one, so probably correct, but not independently confirmed the way
   `DIRECT_ATTACKING_ENTITY` was.
-- New from Consequence: `UseItemCallback.EVENT` (right-click-in-air
-  hook), `DataComponents.LODESTONE_TRACKER` + the `LodestoneTracker`
-  record shape `(Optional<GlobalPos>, boolean)`, `GlobalPos.of(...)`,
-  and `MobEffects.SPEED` (older versions used `MOVEMENT_SPEED` - this
-  may have been renamed at some point, unconfirmed which name 26.2 uses).
+- `UseItemCallback.EVENT`, `DataComponents.LODESTONE_TRACKER` + the
+  `LodestoneTracker` record shape `(Optional<GlobalPos>, boolean)`,
+  `GlobalPos.of(...)`, and `Mob#setTarget(...)` - all from Consequence,
+  none independently confirmed.
 
 If any of these are wrong, the compiler error (for the Java ones) or an
 in-game "unknown tag" warning (for the JSON one) will point at exactly
