@@ -1,57 +1,63 @@
 # Chaos Tools (Fabric, MC 26.2, official mappings)
 
-Custom items with deep, chaotic mechanics - your own spin on the genre,
-not reskins of anyone else's specific ideas. Server-authoritative: all the
-actual gameplay logic runs via server-only events, so it can't be spoofed
-client-side.
+Custom enchantments with deep, chaotic mechanics - your own spin on the
+genre, not reskins of anyone else's specific ideas. Server-authoritative:
+all the actual gameplay logic runs via server-only events, so it can't be
+spoofed client-side. All effects are enchantments applied to normal
+vanilla items (wood to netherite), so there's no custom art needed at all
+- another advantage of the enchantment approach over unique items.
 
-## Current status: Debt reworked as an enchantment (ratio-gate curse)
+## Current status: 4 of 11 enchantments built
 
-Debt is an enchantment (`data/chaostools/enchantment/debt.json`) applicable
-to any mining tool, wood to netherite. **It's a genuine curse, not a
-buff**: at enchantment level N, you need N banked "credits" - from mining
-worthless blocks (dirt/sand/gravel/etc.) - before you're allowed to mine
-even ONE valuable block. The "1 good block" side of the ratio never
-changes; only the cost scales with level. Level 1 = 1:1 (mildly annoying).
-Level 50 = mine 50 worthless blocks just to unlock a single valuable one.
-Credits are spent in full each time you mine a valuable block, so you're
-constantly re-earning your way back to zero.
+**Built:** Debt (confirmed working in-game), Diet, Permit, Consequence.
+**Planned next:** Gravity Pickaxe, then the echo shard items and blocks.
 
-**Assumption I made, not something you specified**: while you're "in the
-hole" (below the required credit threshold) and holding the tool, it
-slowly drains your hunger every couple seconds - a passive cost for being
-stuck, not just a one-time gate. Let me know if you don't want that part.
+## Debt
 
-**Planned (same enchantment approach going forward):** Compass of
-Consequence, Gravity Pickaxe, then the echo shard items and blocks.
-(Diplomat's Hoe was replaced with Permit, below - the mob-mood tracking
-version felt more complex than it needed to be for what you wanted.)
+Mining tool enchantment, levels 1-50. **A genuine curse, not a buff**: at
+enchantment level N, you need N banked "credits" - from mining worthless
+blocks (dirt/sand/gravel/etc.) - before you're allowed to mine even ONE
+valuable block. The "1 good block" side of the ratio never changes; only
+the cost scales with level. Level 1 = 1:1 (mildly annoying). Level 50 =
+mine 50 worthless blocks just to unlock a single valuable one. Credits
+are spent in full each time you mine a valuable block.
 
-## Permit (new, replaces the original Diplomat's Hoe idea)
+**Assumption made, not something you specified**: while you're "in the
+hole" and holding the tool, it slowly drains your hunger every couple
+seconds - a passive cost for being stuck, not just a one-time gate.
+
+## Permit (replaces the original Diplomat's Hoe idea)
 
 Mining tool enchantment (pickaxe/shovel), levels 1-10. Every block-break
 attempt is a dice roll - approved or denied, no persistent state at all,
-the simplest of the three enchantments so far. Approval chance = 55 + 4 x
-level, capped at 95%. Level 1 sits around 59% (close to your "60/40"
-reference point), level 10 is a near-certain 95%.
+the simplest of the enchantments so far. Approval chance = 55 + 4 x level,
+capped at 95%. Level 1 sits around 59%, level 10 is a near-certain 95%.
 
-## Diet (new)
+## Diet
 
-Sword enchantment, levels 1-10. Every hit with a Diet-enchanted weapon
-shrinks the target using Minecraft's real `scale` attribute (the same
-one behind things like slime size) - a genuine data-driven mechanic, not
-custom rendering, so it sidesteps all the rendering-pipeline pain from
-earlier mods this session. Shrink per hit scales with level (0.03 x level,
-floor of 0.15 so it never fully vanishes) but is flat regardless of how
-much damage that particular hit dealt, per your spec. On death, if the
-killing blow came from a Diet weapon, the normal loot table result gets
-capped down to a single item (whatever it would have dropped, quantity 1).
+Sword enchantment, levels 1-10. Every hit shrinks the target using
+Minecraft's real `scale` attribute (the same one behind slime size) - a
+genuine data-driven mechanic, not custom rendering, so it sidesteps the
+rendering-pipeline pain from earlier mods this session. Shrink per hit
+scales with level (0.03 x level, floor of 0.15) but is flat regardless of
+how much damage that particular hit dealt. On death from a Diet weapon,
+the loot table result gets capped down to a single item.
 
-**Design choice you should know about:** I capped Diet's max level at 10
-instead of matching Debt's 50 - a flat per-hit shrink scaling all the way
-to 50 would mean a single hit takes almost any mob to minimum size,
-which felt like it'd trivialize the effect rather than make it funnier.
-Easy to change if you want it to go higher.
+**Design choice:** capped Diet's max level at 10 instead of 50 - a flat
+per-hit shrink scaling to 50 would trivialize the effect in one hit.
+
+## Consequence
+
+Compass enchantment, levels 1-5. Right-click scans a 32-block radius for
+the nearest hostile mob and points the compass at it - using vanilla's
+own **Lodestone Tracker** component, the same mechanic a real
+lodestone-linked compass uses. That's a nice shortcut: we get needle-
+pointing rendering entirely for free instead of writing any custom
+rendering code. It's a snapshot, not a live track - the needle points at
+where the danger *was* when you checked, so it drifts if you or the mob
+move afterward. The twist: checking gives the found mob a temporary Speed
+boost, scaled by enchant level - so getting the information makes the
+situation a little worse, on purpose.
 
 ## Java/architecture concepts covered so far
 
@@ -63,24 +69,22 @@ Easy to change if you want it to go higher.
   respectively.
 - **Builder pattern**: `Item.Properties` is a builder - some builder
   methods (like `.setId()`) need to run *before* the object that consumes
-  the builder is actually constructed, not just before it's registered -
-  construction and registration are separate steps.
+  the builder is actually constructed, not just before it's registered.
 - **Static vs. dynamic registries**: `Item`s live in a static registry -
-  your Java code registers them by hand at startup, always available
-  immediately. `Enchantment`s (since 1.21+) live in a *dynamic*
-  (data-driven) registry - the real definition is a JSON file, loaded
-  when a world starts (like loot tables or recipes). Java code doesn't
-  construct the enchantment; it just holds a `ResourceKey` (a typed
-  "pointer" to it by name) and looks it up via `level.registryAccess()`
-  whenever it actually needs the real thing.
-
+  your Java code registers them by hand at startup. `Enchantment`s live
+  in a *dynamic* (data-driven) registry - the real definition is a JSON
+  file, loaded when a world starts. Java code just holds a `ResourceKey`
+  (a typed "pointer" by name) and looks the real thing up via
+  `level.registryAccess()` whenever it needs it.
 - **Attributes**: entities have real, built-in numeric stats beyond just
-  health - `Attributes.SCALE` controls visual size and is the same system
-  behind things like why a baby zombie is smaller than an adult one.
-  Modding with an existing attribute (change a number Minecraft already
-  understands) is much lower-risk than writing custom rendering code from
-  scratch, which is why Diet uses it instead of trying to hack the mob's
-  actual 3D model.
+  health - `Attributes.SCALE` controls visual size. Modding with an
+  existing attribute (change a number Minecraft already understands) is
+  much lower-risk than writing custom rendering code from scratch.
+- **Reusing existing mechanics**: Consequence's compass-pointing reuses
+  the same Lodestone Tracker data component vanilla already has, instead
+  of building custom needle rendering. Worth internalizing as a general
+  principle: before writing something custom, check whether the game
+  already has a mechanic that does 90% of what you want.
 
 ## Building
 
@@ -93,46 +97,30 @@ Easy to change if you want it to go higher.
 
 ## Risk areas (not fully cross-checked)
 
-Confirmed against real docs: enchantment JSON shape, `PickaxeItem`/`Tiers`
-removal (moot now that Debt isn't a unique item), `ItemGroupEvents` ->
-`CreativeModeTabEvents` (also moot, no more custom item to add to a
-creative tab). New unverified pieces from today's enchantment rework:
+Confirmed against real docs or real testing: enchantment JSON shape,
+dynamic registry lookup pattern, `LootContextParams.DIRECT_ATTACKING_ENTITY`
+(confirmed real name after two wrong guesses - see git history/chat log).
 
-- `level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).get(key)`
-  - the exact method chain for looking up a dynamic-registry entry by
-  its ResourceKey. Reasonably confident in shape, not cross-checked
-  against a real source.
-- `EnchantmentHelper.getItemEnchantmentLevel(Holder<Enchantment>,
-  ItemStack)` - the helper for reading an enchantment's level off a
-  stack. Long-standing pattern from earlier versions; not confirmed
-  specifically for 26.2.
-- `"#minecraft:enchantable/mining"` tag in the JSON - assumed to exist
-  based on the confirmed `"#minecraft:enchantable/weapon"` pattern shown
-  in Fabric's docs for a different enchantment example.
+Still-unverified pieces:
 
 - `ServerLivingEntityEvents.ALLOW_DAMAGE` for hooking "a hit is about to
-  land" - genuinely uncertain this is the right event (it's designed as
-  an allow/deny filter, not specifically an "after damage" hook, but I
-  don't have a confirmed source for a dedicated after-damage event name).
+  land" - it's designed as an allow/deny filter, not specifically an
+  "after damage" hook, but there's no confirmed dedicated after-damage
+  event name to fall back on.
 - `Attributes.SCALE` / `entity.getAttribute(...)` - moderate confidence,
-  this attribute has existed since roughly 1.20.5 but not confirmed for
-  26.2 specifically.
-- `LootTableEvents.MODIFY_DROPS` (package `net.fabricmc.fabric.api.loot.v3`,
-  matching the confirmed-present `fabric-loot-api-v3` module) and its
-  exact lambda signature `(key, context, drops)` - inferred, not
-  cross-checked.
-- `LootContextParams.THIS_ENTITY` / `KILLER_ENTITY` for reading who died
-  and who killed them out of the loot context - long-standing names in
-  past versions, not confirmed for 26.2.
+  existed since roughly 1.20.5, not confirmed for 26.2 specifically.
+- `LootTableEvents.MODIFY_DROPS` lambda signature `(key, context, drops)`
+  - inferred, not cross-checked.
+- `LootContextParams.THIS_ENTITY` - not yet hit a compile error on this
+  one, so probably correct, but not independently confirmed the way
+  `DIRECT_ATTACKING_ENTITY` was.
+- New from Consequence: `UseItemCallback.EVENT` (right-click-in-air
+  hook), `DataComponents.LODESTONE_TRACKER` + the `LodestoneTracker`
+  record shape `(Optional<GlobalPos>, boolean)`, `GlobalPos.of(...)`,
+  and `MobEffects.SPEED` (older versions used `MOVEMENT_SPEED` - this
+  may have been renamed at some point, unconfirmed which name 26.2 uses).
 
 If any of these are wrong, the compiler error (for the Java ones) or an
 in-game "unknown tag" warning (for the JSON one) will point at exactly
-which piece needs a different name.
-
-## Placeholder art
-
-The item currently reuses vanilla's netherite pickaxe texture
-(`assets/chaostools/models/item/debt_pickaxe.json`) since I can't generate
-custom pixel art here. Swap in real textures whenever you want -
-`assets/chaostools/textures/item/debt_pickaxe.png` (16x16) plus updating
-the model's texture reference.
+which piece needs a different name - same troubleshooting approach we've
+used for everything else this session.
